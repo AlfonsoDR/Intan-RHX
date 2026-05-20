@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -74,7 +74,7 @@ public:
     bool ungroupIsPossible() const { return multiColumnDisplay->ungroupIsPossible(); }
 
     void enableSelectedChannels(bool enable) { multiColumnDisplay->enableSelectedChannels(enable); }
-    bool loadSettingsFile(QString filename);
+    bool loadSettingsFile(QString filename, bool silent=false);
     void restoreDisplaySettings();
 
     void updateForLoad();

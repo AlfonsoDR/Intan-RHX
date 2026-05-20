@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -1668,15 +1668,15 @@ void ControlWindow::closeEvent(QCloseEvent *event)
     event->accept();
 }
 
-bool ControlWindow::loadSettingsFile(QString filename)
+bool ControlWindow::loadSettingsFile(QString filename, bool silent)
 {
     QString errorMessage;
     bool loadSuccess = state->loadGlobalSettings(filename, errorMessage);
 
-    if (!loadSuccess) {
+    if (!loadSuccess && !silent) {
         ScrollableMessageBoxDialog msgBox(this, tr("Error: Could not load settings file " ) + filename, errorMessage);
         msgBox.exec();
-    } else if (!errorMessage.isEmpty()) {
+    } else if (!errorMessage.isEmpty() && !silent) {
         ScrollableMessageBoxDialog msgBox(this, tr("Warning: Problem loading settings file " ) + filename, errorMessage);
         msgBox.exec();
     }

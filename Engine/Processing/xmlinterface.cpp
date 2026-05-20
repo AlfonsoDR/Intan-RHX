@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -679,6 +679,9 @@ bool XMLInterface::parseGeneralConfig(const QByteArray &byteArray, QString &erro
                         continue;
                     } else if (hostOrPortOrStatus == tcpCommunicatorItem->getStatusParameterName().toLower()) {
                         tcpCommunicatorItem->setStatus(attributeValue);
+                        continue;
+                    } else if (hostOrPortOrStatus == tcpCommunicatorItem->getStatusOnClientDisconnectParameterName().toLower()) {
+                        tcpCommunicatorItem->setStatusOnClientDisconnect(attributeValue);
                         continue;
                     } else {
                         qDebug() << "Error: seems to be neither host nor port nor status... hostOrPortOrStatus: " << hostOrPortOrStatus;

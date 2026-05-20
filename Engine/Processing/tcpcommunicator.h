@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -40,7 +40,8 @@ class TCPCommunicator : public QObject
     Q_OBJECT
 public:
 
-    explicit TCPCommunicator(QString host_ = "127.0.0.1", int port_ = 5000, ConnectionStatus status_ = Disconnected, QObject *parent = nullptr);
+    explicit TCPCommunicator(QString host_ = "127.0.0.1", int port_ = 5000, ConnectionStatus status_ = Disconnected,
+                             ConnectionStatus statusOnClientDisconnect_ = Disconnected, QObject *parent = nullptr);
     bool connectionAvailable();
     bool serverListening();
     bool listen();
@@ -51,6 +52,7 @@ public:
 
     bool passwordCleared;
     ConnectionStatus status;
+    ConnectionStatus statusOnClientDisconnect;
     QString host;
     int port;
 
@@ -61,7 +63,7 @@ signals:
 
 public slots:
     void attemptNewConnection();
-    void returnToDisconnected();
+    void handleDisconnection(bool fromClient = true);
     void establishConnection();
     void TCPDataOutput(QByteArray* array, qint64 len);
 

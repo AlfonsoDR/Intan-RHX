@@ -121,6 +121,15 @@ TestControlPanel::TestControlPanel(ControllerInterface *controllerInterface_, Ab
     }
     connect(portComboBox, SIGNAL(currentTextChanged(QString)), this, SLOT(changePortComboBoxSlot()));
 
+    digOut1CheckBox = new QCheckBox("DOUT1", this);
+    digOut2CheckBox = new QCheckBox("DOUT2", this);
+    connect(digOut1CheckBox, SIGNAL(toggled(bool)), this, SLOT(setDigitalOut1Slot(bool)));
+    connect(digOut2CheckBox, SIGNAL(toggled(bool)), this, SLOT(setDigitalOut2Slot(bool)));
+    if (state->getControllerTypeEnum() != ControllerStimRecord) {
+        digOut1CheckBox->hide();
+        digOut2CheckBox->hide();
+    }
+
     testAuxInsCheckBox = new QCheckBox(tr("Test Aux Ins"), this);
     if (state->getControllerTypeEnum() == ControllerStimRecord) {
         testAuxInsCheckBox->hide();
@@ -132,6 +141,8 @@ TestControlPanel::TestControlPanel(ControllerInterface *controllerInterface_, Ab
     QHBoxLayout *portRow = new QHBoxLayout;
     portRow->addWidget(portComboBox);
     portRow->addStretch();
+    portRow->addWidget(digOut1CheckBox);
+    portRow->addWidget(digOut2CheckBox);
     portRow->addWidget(testAuxInsCheckBox);
 
     QHBoxLayout *checkInputWaveRow = new QHBoxLayout;
@@ -198,24 +209,33 @@ TestControlPanel::TestControlPanel(ControllerInterface *controllerInterface_, Ab
     testChipRow->addWidget(helpDialogTestChipButton);
     connect(testChipButton, SIGNAL(clicked(bool)), this, SLOT(testChip()));
 
-    QHBoxLayout *triangleErrorThresholdRow = new QHBoxLayout;
-    QLabel *triangleErrorThresholdLabel = new QLabel(tr("Triangle Waveform RMS Error Threshold:"), this);
-    QString triangleErrorDefaultString = "20.0";
-    triangleErrorThresholdLineEdit = new QLineEdit(triangleErrorDefaultString, this);
-    triangleErrorThresholdLineEdit->setFixedWidth(40);
-    triangleErrorThresholdRow->addStretch();
-    triangleErrorThresholdRow->addWidget(triangleErrorThresholdLabel);
-    triangleErrorThresholdRow->addWidget(triangleErrorThresholdLineEdit);
+    QHBoxLayout *triangleErrorRow = new QHBoxLayout;
+    QLabel *triangleThresholdLabel = new QLabel(tr("Triangle Wave Error"), this);
+    QLabel *rmsErrorThresholdLabel = new QLabel(tr("RMS:"), this);
+    QLabel *absErrorThresholdLabel = new QLabel(tr("Absolute:"), this);
+    QString rmsErrorDefaultString = "25.0";
+    QString absErrorDefaultString = "55.0";
+    rmsErrorThresholdLineEdit = new QLineEdit(rmsErrorDefaultString, this);
+    rmsErrorThresholdLineEdit->setFixedWidth(40);
+    absErrorThresholdLineEdit = new QLineEdit(absErrorDefaultString, this);
+    absErrorThresholdLineEdit->setFixedWidth(40);
+
+    triangleErrorRow->addStretch();
+    triangleErrorRow->addWidget(triangleThresholdLabel);
+    triangleErrorRow->addWidget(rmsErrorThresholdLabel);
+    triangleErrorRow->addWidget(rmsErrorThresholdLineEdit);
+    triangleErrorRow->addWidget(absErrorThresholdLabel);
+    triangleErrorRow->addWidget(absErrorThresholdLineEdit);
 
     QHBoxLayout *variableErrorThresholdRow = new QHBoxLayout;
     variableErrorThresholdRow->addStretch();
 
     if (state->getControllerTypeEnum() == ControllerStimRecord) {
         QLabel *stimExpectedVoltageLabel = new QLabel("Stim Expected Voltage:", this);
-        QLabel *stimErrorThresholdLabel = new QLabel("Stim Error Threshold:", this);
+        QLabel *stimErrorThresholdLabel = new QLabel("Stim Error:", this);
         stimExpectedVoltageLineEdit = new QLineEdit("1.0");
         stimErrorThresholdSpinBox = new QDoubleSpinBox(this);
-        stimErrorThresholdSpinBox->setValue(25.0);
+        stimErrorThresholdSpinBox->setValue(50.0);
         stimErrorThresholdSpinBox->setSuffix("%");
         stimErrorThresholdSpinBox->setSingleStep(1.0);
         stimErrorThresholdSpinBox->setDecimals(1);
@@ -227,8 +247,8 @@ TestControlPanel::TestControlPanel(ControllerInterface *controllerInterface_, Ab
         variableErrorThresholdRow->addWidget(stimErrorThresholdLabel);
         variableErrorThresholdRow->addWidget(stimErrorThresholdSpinBox);
     } else {
-        QLabel *settleErrorThresholdLabel = new QLabel("Settle Error Threshold:", this);
-        settleErrorThresholdLineEdit = new QLineEdit("9.0");
+        QLabel *settleErrorThresholdLabel = new QLabel("Settle Error:", this);
+        settleErrorThresholdLineEdit = new QLineEdit("12.0");
         settleErrorThresholdLineEdit->setFixedWidth(40);
         variableErrorThresholdRow->addWidget(settleErrorThresholdLabel);
         variableErrorThresholdRow->addWidget(settleErrorThresholdLineEdit);
@@ -254,7 +274,7 @@ TestControlPanel::TestControlPanel(ControllerInterface *controllerInterface_, Ab
 
     QVBoxLayout *testChipLayout = new QVBoxLayout;
     testChipLayout->addLayout(testChipRow);
-    testChipLayout->addLayout(triangleErrorThresholdRow);
+    testChipLayout->addLayout(triangleErrorRow);
     testChipLayout->addLayout(variableErrorThresholdRow);
     testChipLayout->addLayout(reportRow);
 
@@ -438,6 +458,16 @@ void TestControlPanel::uploadTestStimParametersHelp()
     helpDialogUploadTestStimParameters->show();
     helpDialogUploadTestStimParameters->raise();
     helpDialogUploadTestStimParameters->activateWindow();
+}
+
+void TestControlPanel::setDigitalOut1Slot(bool high)
+{
+    controllerInterface->setDigOut(0, high);
+}
+
+void TestControlPanel::setDigitalOut2Slot(bool high)
+{
+    controllerInterface->setDigOut(1, high);
 }
 
 void TestControlPanel::toggleTestAuxInsSlot()
@@ -876,7 +906,7 @@ void TestControlPanel::updateConnectedChannels()
     connectedChannelsLabel->setText(message);
 }
 
-// Record a short segment of 'duration' seconds, placing the data in 'channels' vector
+// Record a short segment of 'duration' seconds x 3, saving the data from the last 'duration' seconds, placing the data in 'channels' vector
 // A test is run for 64-channel chips (inside the load64() function) to determine if only the inner 32 channels should be considered, or only the outer 32, or all 64
 int TestControlPanel::recordShortSegment(QVector<QVector<double> > &channels, double duration, int portIndex,
                                          QVector<QVector<QVector<double>>> &ampData, QVector<QVector<QString>> &ampChannelNames, QVector<QVector<double>> &auxInData)
@@ -897,8 +927,11 @@ int TestControlPanel::recordShortSegment(QVector<QVector<double> > &channels, do
     int numBlocks = qCeil(duration / datablock_period);
     int numSamples = samplesPerDataBlock * numBlocks;
 
+    int numDummyBlocks = numBlocks * 2;
+    int numDummySamples = samplesPerDataBlock * numDummyBlocks;
+
     rhxController->setContinuousRunMode(false);
-    rhxController->setMaxTimeStep(numSamples);
+    rhxController->setMaxTimeStep(numSamples + numDummySamples);
 
     // Determine number of channels and streams based on the type of chip plugged in
     int numChannels = state->signalSources->portGroupByIndex(portIndex)->numAmpChannels->getValue();
@@ -934,6 +967,12 @@ int TestControlPanel::recordShortSegment(QVector<QVector<double> > &channels, do
         //Possibly put in progress bar and LED increment here
     }
 
+    // Read and discard the first (duration * 2) seconds of data
+    std::deque<RHXDataBlock*> dummyQueue;
+    rhxController->readDataBlocks(numDummyBlocks, dummyQueue);
+    dummyQueue.pop_front();
+
+    // Read and save the last (duration) seconds of data
     std::deque<RHXDataBlock*> dataQueue;
     rhxController->readDataBlocks(numBlocks, dataQueue);
 
@@ -1280,7 +1319,9 @@ void TestControlPanel::load32(int numSamples, QVector<QVector<double> > &channel
     double rms_residual = rms(residual);
 
     //If rms_residual is below the threshold, resize channels to 32 and load data
-    if (rms_residual < 10 || state->getControllerTypeEnum() == ControllerStimRecord) {
+    // Note: default of rms 25 threshold seems too high, so reliably fails for 32 channels.
+    // For now, compare 40% of rms_residual instead of 100% to compensate
+    if (rms_residual * 0.4 < rmsErrorThresholdLineEdit->text().toDouble() || state->getControllerTypeEnum() == ControllerStimRecord) {
         connectedChannels = All32;
         channels.resize(32);
         for (int channel = 0; channel < 32; channel++) {
@@ -1457,7 +1498,9 @@ void TestControlPanel::load64(int numSamples, QVector<QVector<double> > &channel
     double rms_residual = rms(residual);
 
     // If rms_residual is below the threshold, resize channels to 64 and load data
-    if (rms_residual < 10) {
+    // Note: default of rms 25 threshold seems too high, so reliably fails for 64 channel headstages.
+    // For now, compare 40% of rms_residual instead of 100% to compensate
+    if (rms_residual * 0.4 < rmsErrorThresholdLineEdit->text().toDouble()) {
         connectedChannels = All64;
         channels.resize(64);
         for (int channel = 0; channel < 64; ++channel) {
@@ -1711,38 +1754,45 @@ double TestControlPanel::estimatePhase(double f, const QVector<double> &t, const
     return phase;
 }
 
-//Calculate the rms error that expresses the difference between the 'ytarget' waveform and the ideal triangle waveform created by parameters 'f', 'A', and 'phase'
+// Calculate the rms error that expresses the difference between the 'ytarget' waveform and the ideal triangle waveform created by parameters 'f', 'A', and 'phase'
+// Also calculate the maximum difference for a single sample between 'ytarget' and the ideal waveform
 double TestControlPanel::rmsError(const QVector<double> &t, const QVector<double> &ytarget, double f, double A, double phase)
-{
-    int numSamples = t.size();
+{   
+    // Create 'ytest' triangle waveform for each trial, based on the three variables
+    QVector<double> ytest(t.size());
+    triangle(ytest, t, f, A, phase);
 
-    //Copy t vector
-    QVector<double> tCopy;
-    tCopy.resize(numSamples);
-    for (int i = 0; i < numSamples; i++) {
-        tCopy[i] = t[i];
-    }
-
-    //Create 'ytest' triangle waveform for each trial, based on the three variables
-    QVector<double> ytest;
-    ytest.resize(numSamples);
-    triangle(ytest, tCopy, f, A, phase);
-
-    //Eliminate offset from triangle waveform
+    // Eliminate offset from triangle waveform
     eliminateAverageOffset(ytest);
 
-    //Accumulate error across all samples
-    double error_iterator = 0;
-    for (int sample = 0; sample < numSamples; sample++) {
-        //For each sample, square the difference between target and test
-        double single_sample_error = pow(ytarget[sample] - ytest[sample], 2);
-
-        //Accumulate each sample's error into error_iterator
-        error_iterator += single_sample_error;
+    // Accumulate error across all samples
+    double errorIterator = 0;
+    for (int i = 0; i < t.size(); ++i) {
+        errorIterator += pow(ytarget[i] - ytest[i], 2);
     }
 
-    //divide by # samples to get mean, then take square root to get rms
-    return sqrt(error_iterator/numSamples);
+    // Divide by # samples to get mean, then take square root to get rms
+    return sqrt(errorIterator/t.size());
+}
+
+// Calculate the maximum difference for a single sample between 'ytarget' waveform and the ideal triangle waveform created by parameters 'f', 'A', and 'phase'
+double TestControlPanel::absError(const QVector<double> &t, const QVector<double> &ytarget, double f, double A, double phase)
+{
+    // Create 'ytest' triangle waveform for each trial, based on the three variables
+    QVector<double> ytest(t.size());
+    triangle(ytest, t, f, A, phase);
+
+    // Eliminate offset from triangle waveform
+    eliminateAverageOffset(ytest);
+
+    // Find maximum difference between target and ideal across all samples
+    double maxDiff = 0.0;
+    for (int i = 0; i < t.size(); ++i) {
+        maxDiff = qMax(maxDiff, qAbs(ytarget[i] - ytest[i]));
+    }
+
+    // Return maximum difference
+    return maxDiff;
 }
 
 //Calculate the median of the numbers stored in 'arr'
@@ -1777,15 +1827,14 @@ void TestControlPanel::addMatrix(const QVector<double> &augend, const QVector<do
 //Calculate the mean of the numbers stored in 'arr'
 double TestControlPanel::mean(const QVector<double> &arr)
 {
-    double sum = 0;
-    for (int i = 0; i < arr.size(); i++) {
-        sum += arr[i];
-    }
-    return (sum/arr.size());
+    if (arr.isEmpty()) return 0.0;
+
+    double sum = std::accumulate(arr.begin(), arr.end(), 0.0);
+    return sum / arr.size();
 }
 
 //Load the ideal triangle waveform with parameters 'f', 'A', and 'phase' into 'y' vector
-void TestControlPanel::triangle(QVector<double> &y, QVector<double> &t, double f, double A, double phase)
+void TestControlPanel::triangle(QVector<double> &y, const QVector<double> &t, double f, double A, double phase)
 {
     double T = 1/f;
 
@@ -1879,280 +1928,335 @@ void TestControlPanel::testChip()
     progress.setMinimumDuration(0);
     progress.setModal(true);
 
-    // For non-Stim, run fast settle test
-    if (state->getControllerTypeEnum() != ControllerStimRecord) {
+    int trialCount = 0;
+    int maxTrials = 2;
+    while (trialCount < maxTrials) {
+        progress.setLabelText("Testing Chip: Attempt " + QString::number(trialCount + 1) + " of " + QString::number(maxTrials));
 
-        // Set fast settle true
-        configureTab->fastSettleCheckBox->setChecked(true);
-        configureTab->enableFastSettle(true);
+        // For non-Stim, run fast settle test
+        if (state->getControllerTypeEnum() != ControllerStimRecord) {
 
-        // Record fast settle data
-        //recordDummySegment(2.0, portIndex);
-        for (int i = 0; i < 10; i++) {
+            // Set fast settle true
+            configureTab->fastSettleCheckBox->setChecked(true);
+            configureTab->enableFastSettle(true);
+
+            // Record fast settle data
+            //recordDummySegment(2.0, portIndex);
+            for (int i = 0; i < 10; i++) {
+                recordDummySegment(0.1, portIndex);
+            }
+            progress.setValue(1);
+            //recordFSSegment(fastSettleChannels, 1.0, portIndex, ampData, ampChannelNames);
+            recordFSSegment(fastSettleChannels, 0.4, portIndex, ampData, ampChannelNames);
+            eliminateAverageOffset(fastSettleChannels);
+
+            // Set fast settle false
+            configureTab->fastSettleCheckBox->setChecked(false);
+            configureTab->enableFastSettle(false);
+        }
+        progress.setValue(2);
+
+        //Run for 3 seconds for dummy data
+        for (int i = 0; i < 30; i++) {
             recordDummySegment(0.1, portIndex);
         }
-        progress.setValue(1);
-        //recordFSSegment(fastSettleChannels, 1.0, portIndex, ampData, ampChannelNames);
-        recordFSSegment(fastSettleChannels, 0.4, portIndex, ampData, ampChannelNames);
-        eliminateAverageOffset(fastSettleChannels);
 
-        // Set fast settle false
-        configureTab->fastSettleCheckBox->setChecked(false);
-        configureTab->enableFastSettle(false);
-    }
-    progress.setValue(2);
-
-    //Run for 3 seconds for dummy data
-    for (int i = 0; i < 30; i++) {
-    //for (int i = 0; i < 5; i++) {
-    //for (int i = 0; i < 20; i++) {
-        recordDummySegment(0.1, portIndex);
-    }
-    progress.setValue(3);
-
-    ampData.clear();
-    auxInData.clear();
-    ampChannelNames.clear();
-
-    //Load short segment of data into 'channels' vector
-    int numSamples = recordShortSegment(channels, 0.4, portIndex, ampData, ampChannelNames, auxInData);
-
-    progress.setValue(4);
-
-    //Subtract the average value from each of the waveforms (to eliminate transient offset)
-    eliminateAverageOffset(channels);
-
-    // Get largest max - min difference across data. If less than 40 uV, chip is likely dead.
-    double maxSample = 0, minSample = 0;
-    for (int stream = 0; stream < ampData.size(); stream++) {
-        for (int channel = 0; channel < ampData[stream].size(); channel++) {
-            for (int index = 0; index < ampData[stream][channel].size(); index++) {
-                double thisSample = ampData[stream][channel][index];
-                if (thisSample > maxSample) maxSample = thisSample;
-                if (thisSample < minSample) minSample = thisSample;
+        if (trialCount > 0) {
+            //If a previous trial failed, run for an additional 3 seconds
+            for (int i = 0; i < 30; i++) {
+                recordDummySegment(0.1, portIndex);
             }
         }
-    }
-    bool allChannelsDead = false;
-    if (maxSample - minSample < 40.0) {
-        allChannelsDead = true;
-    }
 
-    auxIn1Min = auxIn2Min = auxIn3Min = 3.3;
-    auxIn1Max = auxIn2Max = auxIn3Max = 0;
-    // If testing aux ins is suitable, get median of each channel, and max-min of each channel
-    if (state->getControllerTypeEnum() != ControllerStimRecord) {
-        for (int index = 0; index < auxInData[0].size(); index++) {
-            double thisSample1 = auxInData[0][index];
-            double thisSample2 = auxInData[1][index];
-            double thisSample3 = auxInData[2][index];
+        progress.setValue(3);
 
-            if (thisSample1 > auxIn1Max) auxIn1Max = thisSample1;
-            if (thisSample1 < auxIn1Min) auxIn1Min = thisSample1;
+        ampData.clear();
+        auxInData.clear();
+        ampChannelNames.clear();
 
-            if (thisSample2 > auxIn2Max) auxIn2Max = thisSample2;
-            if (thisSample2 < auxIn2Min) auxIn2Min = thisSample2;
+        //Load short segment of data into 'channels' vector
+        int numSamples = recordShortSegment(channels, 0.4, portIndex, ampData, ampChannelNames, auxInData);
 
-            if (thisSample3 > auxIn3Max) auxIn3Max = thisSample3;
-            if (thisSample3 < auxIn3Min) auxIn3Min = thisSample3;
-        }
-        auxIn1Median = median(auxInData[0]);
-        auxIn2Median = median(auxInData[1]);
-        auxIn3Median = median(auxInData[2]);
-    }
+    #define LIVE_TEST_DATA
+    #ifndef LIVE_TEST_DATA
+        // For debugging, instead of actually acquiring live data, overwrite binary data from a .txt file
+        // so the error optimization algorithm can be run deterministically on the same data consistently.
+        QString filename = "good_chip2.txt";
+        const int numChannels = 16;
+        const int nSamples = 12032;
 
-    //Determine median waveform of the channels
-    QVector<double> median;
-    median.resize(numSamples);
-    medianWaveform(median, channels);
-
-    //Estimate the amplitude of the median waveform
-    double A = estimateAmplitude(median);
-
-    //Create a 'time' vector
-    QVector<double> t;
-    t.resize(numSamples);
-    for (int i = 0; i < numSamples; i++) {
-        t[i] = i * (1 / state->sampleRate->getNumericValue());
-    }
-
-    //Estimate the frequency of the median waveform
-    double f = estimateFrequency(A, t, median);
-
-    //Estimate the phase of the median waveform
-    double phase = estimatePhase(f, t, median);
-
-    /* Amoeba method */
-
-    QVector<double> p_initial;
-    p_initial.resize(3);
-    p_initial[0] = f;
-    p_initial[1] = A;
-    p_initial[2] = phase;
-
-    int restarts = 0;
-    progress.setValue(5);
-
-    int finalLoops = 0;
-
-    while (restarts < 50) {
-
-        // Don't bother iterating over loop if it's clear that channels are dead.
-        if (allChannelsDead) break;
-
-        QVector<double> offset_f;
-        offset_f.reserve(3);
-        offset_f[0] = 0.1 * p_initial[0];
-        offset_f[1] = 0;
-        offset_f[2] = 0;
-
-        QVector<double> offset_A;
-        offset_A.reserve(3);
-        offset_A[0] = 0;
-        offset_A[1] = 0.1 * p_initial[1];
-        offset_A[2] = 0;
-
-        QVector<double> offset_phase;
-        offset_phase.reserve(3);
-        offset_phase[0] = 0;
-        offset_phase[1] = 0;
-        offset_phase[2] = restarts * PI/10;
-
-        QVector<double> p1;
-        p1.resize(3);
-        QVector<double> p2;
-        p2.resize(3);
-        QVector<double> p3;
-        p3.resize(3);
-
-        addMatrix(p_initial, offset_f, p1);
-        addMatrix(p_initial, offset_A, p2);
-        addMatrix(p_initial, offset_phase, p3);
-
-        QVector<QVector<double>> p;
-        p.resize(4);
-        p[0] = p_initial;
-        p[1] = p1;
-        p[2] = p2;
-        p[3] = p3;
-
-        QVector<double> y;
-        y.resize(4);
-
-        for (int index = 0; index < 4; index++) {
-            y[index] = rmsError(t, median, p[index][0], p[index][1], p[index][2]);
+        // Open file with previously acquired data.
+        QFile file(filename);
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            qDebug() << "Could not open file";
         }
 
-        //int nfunk = amoeba(t, median, p, y, 3, 0.01);
-        //qDebug() << "nfunk: " << nfunk;
-        amoeba(t, median, p, y, 3, 0.01);
-
-        if (y[0] < y[1] && y[0] < y[2] && y[0] < y[3])
-            p_initial = p[0];
-        else if (y[1] < y[0] && y[1] < y[2] && y[1] < y[3])
-            p_initial = p[1];
-        else if (y[2] < y[0] && y[2] < y[1] && y[2] < y[3])
-            p_initial = p[2];
-        else
-            p_initial = p[3];
-
-        if (restarts % 10 == 0) {
-            progress.setValue(progress.value() + 1);
+        // Read data into 'values' vector.
+        QTextStream in(&file);
+        QString data = in.readAll();
+        QRegularExpression rx("[,\r\n]+");
+        const QStringList parts = data.split(rx, Qt::SkipEmptyParts);
+        QVector<double> values;
+        values.reserve(parts.size());
+        for (const QString &p : parts) {
+            values.append(p.toDouble());
+        }
+        if (values.size() != numChannels * nSamples) {
+            qDebug() << "Unexpected number of samples";
         }
 
-        if (finalLoops >= 2) {
-            break;
+        // Copy data ultimately into ampData and channels
+        QVector<QVector<double>> result;
+        result.resize(numChannels);
+
+        for (int ch = 0; ch < numChannels; ++ch) {
+            result[ch].append(values.mid(ch * nSamples, nSamples));
+        }
+        ampData[0] = result;
+        channels = ampData[0];
+    #endif
+
+        progress.setValue(4);
+
+        //Subtract the average value from each of the waveforms (to eliminate transient offset)
+        eliminateAverageOffset(channels);
+
+        // Get largest max - min difference across data. If less than 40 uV, chip is likely dead.
+        double maxSample = 0, minSample = 0;
+        for (int stream = 0; stream < ampData.size(); stream++) {
+            for (int channel = 0; channel < ampData[stream].size(); channel++) {
+                for (int index = 0; index < ampData[stream][channel].size(); index++) {
+                    double thisSample = ampData[stream][channel][index];
+                    if (thisSample > maxSample) maxSample = thisSample;
+                    if (thisSample < minSample) minSample = thisSample;
+                }
+            }
+        }
+        bool allChannelsDead = false;
+        if (maxSample - minSample < 40.0) {
+            allChannelsDead = true;
         }
 
-        // Escape early if threshold is met.
-        // Check if all channels satisfy channels_report requirement - if so, can escape early.
-        double maxError = 0;
-        double threshold = triangleErrorThresholdLineEdit->text().toDouble();
+        auxIn1Min = auxIn2Min = auxIn3Min = 3.3;
+        auxIn1Max = auxIn2Max = auxIn3Max = 0;
+        // If testing aux ins is suitable, get median of each channel, and max-min of each channel
+        if (state->getControllerTypeEnum() != ControllerStimRecord) {
+            for (int index = 0; index < auxInData[0].size(); index++) {
+                double thisSample1 = auxInData[0][index];
+                double thisSample2 = auxInData[1][index];
+                double thisSample3 = auxInData[2][index];
+
+                if (thisSample1 > auxIn1Max) auxIn1Max = thisSample1;
+                if (thisSample1 < auxIn1Min) auxIn1Min = thisSample1;
+
+                if (thisSample2 > auxIn2Max) auxIn2Max = thisSample2;
+                if (thisSample2 < auxIn2Min) auxIn2Min = thisSample2;
+
+                if (thisSample3 > auxIn3Max) auxIn3Max = thisSample3;
+                if (thisSample3 < auxIn3Min) auxIn3Min = thisSample3;
+            }
+            auxIn1Median = median(auxInData[0]);
+            auxIn2Median = median(auxInData[1]);
+            auxIn3Median = median(auxInData[2]);
+        }
+
+        //Determine median waveform of the channels
+        QVector<double> median;
+        median.resize(numSamples);
+        medianWaveform(median, channels);
+
+        //Estimate the amplitude of the median waveform
+        double A = estimateAmplitude(median);
+
+        //Create a 'time' vector
+        QVector<double> t;
+        t.resize(numSamples);
+        for (int i = 0; i < numSamples; i++) {
+            t[i] = i * (1 / state->sampleRate->getNumericValue());
+        }
+
+        //Estimate the frequency of the median waveform
+        double f = estimateFrequency(A, t, median);
+
+        //Estimate the phase of the median waveform
+        double phase = estimatePhase(f, t, median);
+
+        /* Amoeba method */
+
+        QVector<double> p_initial;
+        p_initial.resize(3);
+        p_initial[0] = f;
+        p_initial[1] = A;
+        p_initial[2] = phase;
+
+        int restarts = 0;
+        progress.setValue(5);
+
+        int finalLoops = 0;
+
+        while (restarts < 50) {
+
+            // Don't bother iterating over loop if it's clear that channels are dead.
+            if (allChannelsDead) break;
+
+            QVector<double> offset_f;
+            offset_f.resize(3);
+            offset_f[0] = 0.1 * p_initial[0];
+            offset_f[1] = 0;
+            offset_f[2] = 0;
+
+            QVector<double> offset_A;
+            offset_A.resize(3);
+            offset_A[0] = 0;
+            offset_A[1] = 0.1 * p_initial[1];
+            offset_A[2] = 0;
+
+            QVector<double> offset_phase;
+            offset_phase.resize(3);
+            offset_phase[0] = 0;
+            offset_phase[1] = 0;
+            offset_phase[2] = restarts * PI/10;
+
+            QVector<double> p1;
+            p1.resize(3);
+            QVector<double> p2;
+            p2.resize(3);
+            QVector<double> p3;
+            p3.resize(3);
+
+            addMatrix(p_initial, offset_f, p1);
+            addMatrix(p_initial, offset_A, p2);
+            addMatrix(p_initial, offset_phase, p3);
+
+            QVector<QVector<double>> p;
+            p.resize(4);
+            p[0] = p_initial;
+            p[1] = p1;
+            p[2] = p2;
+            p[3] = p3;
+
+            QVector<double> y;
+            y.resize(4);
+
+            for (int index = 0; index < 4; index++) {
+                y[index] = rmsError(t, median, p[index][0], p[index][1], p[index][2]);
+            }
+
+            amoeba(t, median, p, y, 3, 0.01);
+
+            if (y[0] < y[1] && y[0] < y[2] && y[0] < y[3])
+                p_initial = p[0];
+            else if (y[1] < y[0] && y[1] < y[2] && y[1] < y[3])
+                p_initial = p[1];
+            else if (y[2] < y[0] && y[2] < y[1] && y[2] < y[3])
+                p_initial = p[2];
+            else
+                p_initial = p[3];
+
+            if (restarts % 10 == 0) {
+                progress.setValue(progress.value() + 1);
+            }
+
+            if (finalLoops >= 2) {
+                break;
+            }
+
+            // Escape early if threshold is met.
+            // Check if all channels satisfy channels_report requirement - if so, can escape early.
+            double maxError = 0;
+            double threshold = rmsErrorThresholdLineEdit->text().toDouble();
+            for (int channel = 0; channel < channels.size(); channel++) {
+                double thisError = rmsError(t, channels[channel], p_initial[0], p_initial[1], p_initial[2]);
+                maxError = (std::max)(maxError, thisError);
+            }
+            if (maxError < threshold) {
+                finalLoops++;
+            }
+
+            restarts++;
+        }
+
+        progress.setValue(11);
+        p_initial[2] = fmod(p_initial[2], 2*PI);
+
+        QVector<double> p_final;
+        p_final.resize(3);
+
+        p_final = p_initial;
+
+        //Make sure low-error frequency isn't outside the range 90 - 110 Hz
+        if (p_final[0] < 90 || p_final[0] > 110)
+            p_final[0] = 100;
+
+        //Make sure low-error amplitude isn't outside the range 300 to 600 uV
+        if (p_final[1] < 300 || p_final[1] > 600)
+            p_final[1] = 400;
+
+        //double y_final = y_initial;
+
+        //Compare the best-fit line to each channel
+        channels_report.resize(channels.size());
+        channels_report_abs.resize(channels.size());
         for (int channel = 0; channel < channels.size(); channel++) {
-            double thisError = rmsError(t, channels[channel], p_initial[0], p_initial[1], p_initial[2]);
-            maxError = (std::max)(maxError, thisError);
-        }
-        if (maxError < threshold) {
-            finalLoops++;
+            channels_report[channel] = rmsError(t, channels[channel], p_final[0], p_final[1], p_final[2]);
+            channels_report_abs[channel] = absError(t, channels[channel], p_final[0], p_final[1], p_final[2]);
         }
 
-        restarts++;
-    }
-
-    progress.setValue(11);
-    p_initial[2] = fmod(p_initial[2], 2*PI);
-
-    QVector<double> p_final;
-    p_final.resize(3);
-
-    p_final = p_initial;
-
-    //Make sure low-error frequency isn't outside the range 90 - 110 Hz
-    if (p_final[0] < 90 || p_final[0] > 110)
-        p_final[0] = 100;
-
-    //Make sure low-error amplitude isn't outside the range 300 to 600 uV
-    if (p_final[1] < 300 || p_final[1] > 600)
-        p_final[1] = 400;
-
-    //double y_final = y_initial;
-
-    //Compare the best-fit line to each channel
-    channels_report.resize(channels.size());
-    for (int channel = 0; channel < channels.size(); channel++) {
-        channels_report[channel] = rmsError(t, channels[channel], p_final[0], p_final[1], p_final[2]);
-    }
-
-    //Convert fastSettleChannels to validFastSettleChannels (to account for possibility that 64-channel headstage is plugged in, with inner or outer 32 channels valid
-    if (state->getControllerTypeEnum() != ControllerStimRecord) {
-        QVector<QVector<double>> validFastSettleChannels;
-        validateFastSettleChannels(fastSettleChannels, validFastSettleChannels);
-        channels_report_settle.resize(validFastSettleChannels.size());
-        for (int channel = 0; channel < validFastSettleChannels.size(); channel++) {
-            double sum = 0;
-            for (int sample = 0; sample < validFastSettleChannels[channel].size(); sample++) {
-                sum += pow(validFastSettleChannels[channel][sample], 2);
+        //Convert fastSettleChannels to validFastSettleChannels (to account for possibility that 64-channel headstage is plugged in, with inner or outer 32 channels valid
+        if (state->getControllerTypeEnum() != ControllerStimRecord) {
+            QVector<QVector<double>> validFastSettleChannels;
+            validateFastSettleChannels(fastSettleChannels, validFastSettleChannels);
+            channels_report_settle.resize(validFastSettleChannels.size());
+            for (int channel = 0; channel < validFastSettleChannels.size(); channel++) {
+                double sum = 0;
+                for (int sample = 0; sample < validFastSettleChannels[channel].size(); sample++) {
+                    sum += pow(validFastSettleChannels[channel][sample], 2);
+                }
+                channels_report_settle[channel] = pow(sum/validFastSettleChannels[channel].size(), 0.5);
             }
-            channels_report_settle[channel] = pow(sum/validFastSettleChannels[channel].size(), 0.5);
-        }
-        multiColumnDisplay->loadWaveformDataDirectAmp(ampData, ampChannelNames, auxInData);
-    }
-
-    else {
-        // 0) Set plot to display Wideband on Col. 1 and DC on Col. 2
-        state->arrangeBy->setIndex(1);
-        state->filterDisplay2->setIndex(5);
-        QString displaySettingsString;
-        displaySettingsString = "ShowColumn:Port A:1456,723,22,1,0,0,0,0,0:ShowPinned:;ShowColumn:Port A:1456,723,22,1,733,0,0,0,0:ShowPinned:";
-        state->displaySettings->setValue(displaySettingsString);
-        multiColumnDisplay->restoreFromDisplaySettingsString(displaySettingsString);
-        filterDisplaySelector->updateFromState();
-
-        // 1) Set up stimulation parameters
-        // Get the command stream(s) of any connected chips
-        QVector<int> connectedStreams = getConnectedCommandStreams();
-        // Upload stim parameters to command stream(s)
-        for (int streamIndex = 0; streamIndex < connectedStreams.size(); ++streamIndex) {
-            controllerInterface->uploadAutoStimParameters(connectedStreams[streamIndex]);
+            multiColumnDisplay->loadWaveformDataDirectAmp(ampData, ampChannelNames, auxInData);
         }
 
-        // 2) Acquire and stimulate for 400 ms, plot DC
-        QVector<QVector<QString>> dcChannelNames;
-        recordDCSegment(0.4, portIndex, dcChannelNames);
+        else {
+            // 0) Set plot to display Wideband on Col. 1 and DC on Col. 2
+            state->arrangeBy->setIndex(1);
+            state->filterDisplay2->setIndex(5);
+            QString displaySettingsString;
+            displaySettingsString = "ShowColumn:Port A:1456,723,22,1,0,0,0,0,0:ShowPinned:;ShowColumn:Port A:1456,723,22,1,733,0,0,0,0:ShowPinned:";
+            state->displaySettings->setValue(displaySettingsString);
+            multiColumnDisplay->restoreFromDisplaySettingsString(displaySettingsString);
+            filterDisplaySelector->updateFromState();
 
-        // 3) Load this segment into plotter
-        multiColumnDisplay->loadWaveformDataDirectAmpDC(ampData, ampChannelNames, dcData, dcChannelNames);
+            // 1) Set up stimulation parameters
+            // Get the command stream(s) of any connected chips
+            QVector<int> connectedStreams = getConnectedCommandStreams();
+            // Upload stim parameters to command stream(s)
+            for (int streamIndex = 0; streamIndex < connectedStreams.size(); ++streamIndex) {
+                controllerInterface->uploadAutoStimParameters(connectedStreams[streamIndex]);
+            }
 
-        // 4) Populate report with whether DC waveforms are acceptable
-        checkDCWaveforms();
+            // 2) Acquire and stimulate for 400 ms, plot DC
+            QVector<QVector<QString>> dcChannelNames;
+            recordDCSegment(0.4, portIndex, dcChannelNames);
+
+            // 3) Load this segment into plotter
+            multiColumnDisplay->loadWaveformDataDirectAmpDC(ampData, ampChannelNames, dcData, dcChannelNames);
+
+            // 4) Populate report with whether DC waveforms are acceptable
+            checkDCWaveforms();
+        }
+
+        //Allow user to access report
+        reportPresent = true;
+        viewReportButton->setEnabled(true);
+        saveReportButton->setEnabled(true);
+
+        if (generateReport(channels)) {
+            break;
+        } else {
+            trialCount++;
+        }
     }
-
-    //Allow user to access report
-    reportPresent = true;
-    viewReportButton->setEnabled(true);
-    saveReportButton->setEnabled(true);
-
-    generateReport(channels);
 
     // For Stim, clear stim parameters before ending
     if (state->getControllerTypeEnum() == ControllerStimRecord) {
@@ -2173,7 +2277,8 @@ void TestControlPanel::testChip()
     progress.setValue(12);
 }
 
-void TestControlPanel::generateReport(QVector<QVector<double> > channels)
+// Return true if good, false if bad
+bool TestControlPanel::generateReport(QVector<QVector<double> > channels)
 {
     // Clear 'report' QVector
     if (report.size() != 0) {
@@ -2188,7 +2293,8 @@ void TestControlPanel::generateReport(QVector<QVector<double> > channels)
         report.replace(channel, new ChannelInfo);
         report[channel]->actualChannelNumber = channel;
         report[channel]->channelVectorIndex = channel;
-        report[channel]->triangleError = channels_report[channel];
+        report[channel]->rmsError = channels_report[channel];
+        report[channel]->absoluteError = channels_report_abs[channel];
         report[channel]->variableError = state->getControllerTypeEnum() == ControllerStimRecord ? channels_report_stim[channel] : channels_report_settle[channel];
         if (state->getControllerTypeEnum() == ControllerStimRecord) {
             report[channel]->posAvg = channels_report_pos[channel];
@@ -2206,10 +2312,14 @@ void TestControlPanel::generateReport(QVector<QVector<double> > channels)
     }
 
     bool high_error = false;
-    int threshold = triangleErrorThresholdLineEdit->text().toDouble();
+    double rmsThreshold = rmsErrorThresholdLineEdit->text().toDouble();
+    double absThreshold = absErrorThresholdLineEdit->text().toDouble();
 
     for (int channel = 0; channel < channels.size(); channel++) {
-        if (channels_report[channel] > threshold || std::isnan(channels_report[channel])) {
+        if (channels_report[channel] > rmsThreshold || std::isnan(channels_report[channel])) {
+            high_error = true;
+        }
+        if (channels_report_abs[channel] > absThreshold || std::isnan(channels_report_abs[channel])) {
             high_error = true;
         }
         if (state->getControllerTypeEnum() == ControllerStimRecord) {
@@ -2240,6 +2350,7 @@ void TestControlPanel::generateReport(QVector<QVector<double> > channels)
     viewReportButton->setStyleSheet(high_error ? "QPushButton {background-color: red; }" : "QPushButton {background-color: green; }");
     reportLabel->setText(high_error ? "Bad" : "Good");
     reportLabel->setStyleSheet(high_error ? "QLabel { color: red; }" : "QLabel { color : green; }");
+    return !high_error;
 }
 
 bool TestControlPanel::isOutsideExpectedValue(double actualValue, double expectedValue)
@@ -2325,7 +2436,7 @@ int TestControlPanel::calculateVoltages(QVector<double> dcData, QVector<double> 
         // and return 1 (error).
         posVoltages.append(*std::max_element(dcData.begin() + transientSamplesToIgnore, dcData.begin() + 400));
         negVoltages.append(*std::min_element(dcData.begin() + 400 + transientSamplesToIgnore, dcData.begin() + 800));
-        qDebug() << "violates expected A";
+        //qDebug() << "violates expected A";
         return 1;
     }
 
@@ -2349,7 +2460,7 @@ int TestControlPanel::calculateVoltages(QVector<double> dcData, QVector<double> 
         //for (int sample = currentIndex; sample < 800 - transientSamplesToIgnore; ++sample) {
         for (int sample = currentIndex; sample < currentIndex + 800 - transientSamplesToIgnore; ++sample) {
             if (dcData[sample] < zeroLowerBound || dcData[sample] > zeroUpperBound) {
-                qDebug() << "violates expected D... cycle: " << cycle << " sample index: " << sample << " voltage: " << dcData[sample];
+                //qDebug() << "violates expected D... cycle: " << cycle << " sample index: " << sample << " voltage: " << dcData[sample];
                 errorFlag = 1;
             }
         }
@@ -2536,7 +2647,7 @@ int TestControlPanel::amoeba(QVector<double> &t, QVector<double> &ytarget, QVect
             break;
         }
 
-        if (nfunk >= 5000) {
+        if (nfunk >= 500) {
             qDebug() << "NMAX exceeded";
             break;
         }
@@ -2640,7 +2751,8 @@ void TestControlPanel::viewReport()
             firstLine = false;
         }
 
-        bool goodTriangle = report[channel]->triangleError < triangleErrorThresholdLineEdit->text().toFloat();
+        bool goodTriangle = report[channel]->rmsError < rmsErrorThresholdLineEdit->text().toFloat();
+        bool goodAbs = report[channel]->absoluteError < absErrorThresholdLineEdit->text().toFloat();
         bool goodVariable;
         if (state->getControllerTypeEnum() == ControllerStimRecord) {
             goodVariable = report[channel]->variableError == 0;
@@ -2652,7 +2764,12 @@ void TestControlPanel::viewReport()
         report_string.append(QString::number(report[channel]->actualChannelNumber));
         report_string.append(". Triangle error: ");
         report_string.append(goodTriangle ? greenHtml : redHtml);
-        report_string.append(QString::number(report[channel]->triangleError));
+        report_string.append(QString::number(report[channel]->rmsError));
+        report_string.append(blackHtml);
+
+        report_string.append(". Abs error: ");
+        report_string.append(goodAbs ? greenHtml : redHtml);
+        report_string.append(QString::number(report[channel]->absoluteError));
         report_string.append(blackHtml);
 
         report_string.append(state->getControllerTypeEnum() == ControllerStimRecord ? ". Stim error: " : ". Settle error: ");
@@ -2750,7 +2867,7 @@ void TestControlPanel::viewReport()
     reportDialog.setLayout(mainLayout);
 
     reportDialog.setWindowTitle("Report of Channels");
-    reportDialog.setMinimumWidth(500);
+    reportDialog.setMinimumWidth(600);
     reportDialog.exec();
 }
 
@@ -2774,14 +2891,15 @@ void TestControlPanel::saveReport()
         }
         QTextStream out(&csvFile);
         if (state->getControllerTypeEnum() == ControllerStimRecord) {
-            out << "Channel Number,Triangle Error,Stim Error,Avg Positive Voltage, Avg Negative Voltage" << Qt::endl;
+            out << "Channel Number,Triangle RMS Error,Triangle Absolute Error,Stim Error,Avg Positive Voltage, Avg Negative Voltage" << Qt::endl;
         } else {
-            out << "Channel Number,Triangle Error,Settle Error" << Qt::endl;
+            out << "Channel Number,Triangle Error,Triangle ABsolute Error,Settle Error" << Qt::endl;
         }
 
         for (int channel = 0; channel < report.size(); channel++) {
             out << report.at(channel)->actualChannelNumber << ",";
-            out << report.at(channel)->triangleError << ",";
+            out << report.at(channel)->rmsError << ",";
+            out << report.at(channel)->absoluteError << ",";
             if (state->getControllerTypeEnum() == ControllerStimRecord) {
                 out << report.at(channel)->variableError << ",";
                 out << report.at(channel)->posAvg << ",";
@@ -2789,7 +2907,6 @@ void TestControlPanel::saveReport()
             } else {
                 out << report.at(channel)->variableError << Qt::endl;
             }
-            //out << report.at(channel)->variableError << Qt::endl;
         }
         csvFile.close();
     }

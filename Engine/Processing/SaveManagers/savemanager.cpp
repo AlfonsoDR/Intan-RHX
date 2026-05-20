@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -40,7 +40,8 @@
 SaveManager::SaveManager(WaveformFifo* waveformFifo_, SystemState* state_) :
     waveformFifo(waveformFifo_),
     state(state_),
-    signalSources(state_->signalSources)
+    signalSources(state_->signalSources),
+    minimalLatency(state_->writeToDiskLatency->getValueString() == "Minimal")
 {
     type = state->getControllerTypeEnum();
     timeStampOffset = 0;

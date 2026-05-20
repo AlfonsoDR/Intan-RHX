@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -46,7 +46,7 @@ const int HASHMARKLENGTH = 5;
 // Software version number (e.g., version 1.3.5)
 #define SOFTWARE_MAIN_VERSION_NUMBER 3
 #define SOFTWARE_SECONDARY_VERSION_NUMBER 5
-#define SOFTWARE_TERTIARY_VERSION_NUMBER 0
+#define SOFTWARE_TERTIARY_VERSION_NUMBER 1
 
 enum ControllerType {
     ControllerRecordUSB2 = 0,
@@ -247,7 +247,9 @@ const QString ConfigFileRHDController = "ConfigRHDController.bit";
 const QString ConfigFileRHSController = "ConfigRHSController.bit";
 const QString ConfigFileXEM6010Tester = "ConfigXEM6010Tester.bit";
 const QString ConfigFileRHDController_7310 = "ConfigRHDController_7310.bit";
+const QString ConfigFileRHDController_7310_test = "ConfigRHDController_7310_test.bit";
 const QString ConfigFileRHSController_7310 = "ConfigRHSController_7310.bit";
+const QString ConfigFileRHSController_7310_test = "ConfigRHSController_7310_test.bit";
 
 // Special Unicode characters, as QString data type
 const QString DeltaSymbol = QString((QChar)0x0394);

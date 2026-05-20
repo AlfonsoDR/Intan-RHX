@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -135,11 +135,12 @@ void StateFilenameItem::setTimestamp(const QString &timestamp_)
 
 StateTCPCommunicatorItem::StateTCPCommunicatorItem(const QString &parameterName_, TCPCommunicatorItemList *hList_, SystemState *state_,
                                                    const QString &defaultHost, int defaultPort, ConnectionStatus defaultStatus,
+                                                   ConnectionStatus defaultStatusOnClientDisconnect,
                                                    XMLGroup xmlGroup_, TypeDependency typeDependency_) :
     StateItem(parameterName_, state_, xmlGroup_, typeDependency_)
 {
     state->addStateTCPCommunicatorItem(*hList_, this);
-    communicator = new TCPCommunicator(defaultHost, defaultPort, defaultStatus);
+    communicator = new TCPCommunicator(defaultHost, defaultPort, defaultStatus, defaultStatusOnClientDisconnect);
 }
 
 StateTCPCommunicatorItem::~StateTCPCommunicatorItem()
@@ -166,6 +167,14 @@ QString StateTCPCommunicatorItem::getStatus() const
     }
 }
 
+QString StateTCPCommunicatorItem::getStatusOnClientDisconnect() const
+{
+    switch (communicator->statusOnClientDisconnect) {
+    case Pending: return "Pending";
+    default: return "Disconnected";
+    }
+}
+
 void StateTCPCommunicatorItem::setHost(const QString &host_)
 {
     communicator->host = host_;
@@ -183,7 +192,17 @@ void StateTCPCommunicatorItem::setStatus(const QString &status_)
     if (status_.toLower() == "pending" || status_.toLower() == "connected") {
         communicator->attemptNewConnection();
     } else {
-        communicator->returnToDisconnected();
+        communicator->handleDisconnection(false);
+    }
+    state->forceUpdate();
+}
+
+void StateTCPCommunicatorItem::setStatusOnClientDisconnect(const QString &status_)
+{
+    if (status_.toLower() == "pending") {
+        communicator->statusOnClientDisconnect = Pending;
+    } else {
+        communicator->statusOnClientDisconnect = Disconnected;
     }
     state->forceUpdate();
 }

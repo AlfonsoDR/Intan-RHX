@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -146,6 +146,8 @@ public:
     void uploadStimParameters(Channel* channel);
     void uploadStimParameters();
 
+    void setDigOut(int channel, bool high);
+
 signals:
     void setTimeLabel(QString text);
     void setTopStatusLabel(QString text);
@@ -169,7 +171,7 @@ private slots:
     void updateWaveformProcessorCpuLoad(double percentLoad) { waveformProcessorCpuLoad = percentLoad; }
 
 private:
-    void openController(const QString& boardSerialNumber);
+    void openController(const QString& boardSerialNumber, bool testMode);
     void initializeController();
     int scanPorts(std::vector<ChipType> &chipType, std::vector<int> &portIndex, std::vector<int> &commandStream,
                   std::vector<int> &numChannelsOnPort);

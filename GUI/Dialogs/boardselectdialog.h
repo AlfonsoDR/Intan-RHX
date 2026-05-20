@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -151,7 +151,8 @@ private:
 
     void showDemoMessageBox();
     void startSoftware(ControllerType controllerType, AmplifierSampleRate sampleRate, StimStepSize stimStepSize,
-                       int numSPIPorts, bool expanderConnected, const QString& boardSerialNumber, AcquisitionMode mode, bool is7310, DataFileReader* dataFileReader=nullptr);
+                       int numSPIPorts, bool expanderConnected, const QString& boardSerialNumber, AcquisitionMode mode,
+                       bool is7310, DataFileReader* dataFileReader=nullptr, const QString& startupDefaultSettingsFile="");
     void startSoftwareFromSettings(QString settingsFileName);
 
     AmplifierSampleRate parseSampleRate(const QString& sampleRateStr, ControllerType controllerType);

@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -201,6 +201,8 @@ public:
     virtual void selectAuxCommandLength(AuxCmdSlot auxCommandSlot, int loopIndex, int endIndex) = 0;
     virtual void selectAuxCommandBank(BoardPort port, AuxCmdSlot auxCommandSlot, int bank) = 0;
     void selectAuxCommandBankAllPorts(AuxCmdSlot auxCommandSlot, int bank);
+
+    virtual void setDigOut(int /* channel */, bool /* high */) {}
 
     virtual int getBoardMode() = 0;
     virtual int getNumSPIPorts(bool& expanderBoardDetected) = 0;

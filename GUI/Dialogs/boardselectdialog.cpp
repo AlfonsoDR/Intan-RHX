@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -454,8 +454,8 @@ BoardSelectDialog::BoardSelectDialog(QString settingsFileName, QWidget *parent) 
     if (!validControllersPresent(controllersInfo)) {
         if (settingsFileName != "") {
             QMessageBox::critical(nullptr, QObject::tr("No Hardware Detected: Software Aborting"),
-                                  QObject::tr("While using --settings argument to configure hardware autonomously,"
-                                              "no Intan controllers were detected. Make sure controllers are powered on"
+                                  QObject::tr("While using --settings argument to configure hardware autonomously, "
+                                              "no Intan controllers were detected. Make sure controllers are powered on "
                                               "and plugged in via USB before starting RHX when using --settings."));
             exit(EXIT_FAILURE);
         }
@@ -680,6 +680,7 @@ void BoardSelectDialog::startSoftwareFromSettings(QString settingsFileName)
     QString deviceSerial = startupSettings.value("device_serial").toString().toLower();
     QString sampleRateHz = startupSettings.value("sample_rate_hz").toString().toLower();
     QString stimStepSizeuA = startupSettings.value("stim_step_size_ua").toString().toLower();
+    QString defaultSettingsFile = startupSettings.value("default_settings_file").toString().toLower();
 
     // Determine which entry in controllersInfo corresponds to the provided serial number.
     // Default to first entry in controllersInfo (earlier call to validControllersPresent ensures this object exists).
@@ -700,14 +701,17 @@ void BoardSelectDialog::startSoftwareFromSettings(QString settingsFileName)
     // Determine stim step size, defaulting to 0.1 uA
     StimStepSize thisStimStepSize = parseStimStepSize(stimStepSizeuA);
 
+
     startSoftware(controllerType, thisSampleRate, thisStimStepSize, thisController.numSPIPorts,
-                  thisController.expConnected, thisSerial, LiveMode, thisController.usbVersion == USB3_7310);
+                  thisController.expConnected, thisSerial, LiveMode, thisController.usbVersion == USB3_7310,
+                  nullptr, defaultSettingsFile);
     splash->finish(controlWindow);
     accept();
 }
 
 void BoardSelectDialog::startSoftware(ControllerType controllerType, AmplifierSampleRate sampleRate, StimStepSize stimStepSize,
-                                      int numSPIPorts, bool expanderConnected, const QString& boardSerialNumber, AcquisitionMode mode, bool is7310, DataFileReader* dataFileReader)
+                                      int numSPIPorts, bool expanderConnected, const QString& boardSerialNumber, AcquisitionMode mode,
+                                      bool is7310, DataFileReader* dataFileReader, const QString& startupDefaultSettingsFile)
 {
     if (mode == LiveMode) {
         rhxController = new RHXController(controllerType, sampleRate, is7310);
@@ -777,18 +781,38 @@ void BoardSelectDialog::startSoftware(ControllerType controllerType, AmplifierSa
     controlWindow->show();
 
     settings.beginGroup(ControllerTypeSettingsGroup[(int)state->getControllerTypeEnum()]);
-    if (defaultSettingsFileCheckBox->isChecked()) {
-        settings.setValue("loadDefaultSettingsFile", true);
-        QString defaultSettingsFile = QString(settings.value("defaultSettingsFile", "").toString());
-        if (controlWindow->loadSettingsFile(defaultSettingsFile)) {
-            emit controlWindow->setStatusBarText("Loaded default settings file " + defaultSettingsFile);
+    if (startupDefaultSettingsFile == "") {
+        if (defaultSettingsFileCheckBox->isChecked()) {
+            settings.setValue("loadDefaultSettingsFile", true);
+            QString defaultSettingsFile = QString(settings.value("defaultSettingsFile", "").toString());
+            if (controlWindow->loadSettingsFile(defaultSettingsFile)) {
+                emit controlWindow->setStatusBarText("Loaded default settings file " + defaultSettingsFile);
+            } else {
+                emit controlWindow->setStatusBarText("Error loading default settings file " + defaultSettingsFile);
+            }
         } else {
-            emit controlWindow->setStatusBarText("Error loading default settings file " + defaultSettingsFile);
+            settings.setValue("loadDefaultSettingsFile", false);
         }
+        settings.endGroup();
     } else {
-        settings.setValue("loadDefaultSettingsFile", false);
+        if (startupDefaultSettingsFile == "previous") {
+            settings.setValue("loadDefaultSettingsFile", true);
+            QString defaultSettingsFile = QString(settings.value("defaultSettingsFile", "").toString());
+            if (controlWindow->loadSettingsFile(defaultSettingsFile, true)) {
+                emit controlWindow->setStatusBarText("Loaded default settings file " + defaultSettingsFile);
+            } else {
+                emit controlWindow->setStatusBarText("Error loading default settings file " + defaultSettingsFile);
+            }
+        } else {
+            settings.setValue("loadDefaultSettingsFile", true);
+            if (controlWindow->loadSettingsFile(startupDefaultSettingsFile, true)) {
+                emit controlWindow->setStatusBarText("Loaded default settings file " + startupDefaultSettingsFile);
+                settings.setValue("defaultSettingsFile", startupDefaultSettingsFile);
+            } else {
+                emit controlWindow->setStatusBarText("Error loading default settings file " + startupDefaultSettingsFile);
+            }
+        }
     }
-    settings.endGroup();
 
     if (state->testMode->getValue()) {
         state->plottingMode->setValue("Original");

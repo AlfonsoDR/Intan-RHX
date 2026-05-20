@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -162,22 +162,27 @@ class StateTCPCommunicatorItem : public StateItem
 public:
     StateTCPCommunicatorItem(const QString &parameterName_, TCPCommunicatorItemList *hList_, SystemState *state_,
                              const QString &defaultHost = "127.0.0.1", int defaultPort = 5000, ConnectionStatus defaultStatus = Disconnected,
+                             ConnectionStatus defaultStatusOnClientDisconnect = Disconnected,
                              XMLGroup xmlGroup_ = XMLGroupGeneral, TypeDependency typeDependency_ = TypeDependencyNone);
     virtual ~StateTCPCommunicatorItem();
 
     QString getHostParameterName() const { return "Host"; }
     QString getPortParameterName() const { return "Port"; }
     QString getStatusParameterName() const { return "Status"; }
+    QString getStatusOnClientDisconnectParameterName() const { return "StatusOnClientDisconnect"; }
 
     QString getHost() const;
     QString getPort() const;
     QString getStatus() const;
+    QString getStatusOnClientDisconnect() const;
 
     void setHost(const QString& host_);
     void setPort(const QString& port_);
     void setStatus(const QString& status_);
+    void setStatusOnClientDisconnect(const QString& status_);
 
-    QString getValidValues() const override { return "Host: IP host address, Port: 0-9999, Status: \"Disconnected\", \"Pending\", or \"Connected\""; }
+    QString getValidValues() const override { return "Host: IP host address, Port: 0-9999, Status: \"Disconnected\", \"Pending\", or \"Connected\","
+                                                     "StatusOnClientDisconnect: \"Disconnected\" or \"Pending\""; }
 
     TCPCommunicator *communicator;
 };

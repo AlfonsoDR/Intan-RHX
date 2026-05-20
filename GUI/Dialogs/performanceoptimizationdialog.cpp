@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -70,6 +70,7 @@ PerformanceOptimizationDialog::PerformanceOptimizationDialog(SystemState* state_
     QHBoxLayout *writeLatencySelectionRow = new QHBoxLayout;
     writeLatencySelectionRow->addWidget(new QLabel(tr("Write Latency:"), this));
     writeLatencySelectionRow->addWidget(writeLatencyComboBox);
+    connect(writeLatencyComboBox, SIGNAL(currentTextChanged(QString)), this, SLOT(toggleMinimalLatencyNote()));
 
     QHBoxLayout *plottingModeRow = new QHBoxLayout;
     plottingModeRow->addWidget(new QLabel(tr("Plotting Mode:"), this));
@@ -93,6 +94,17 @@ PerformanceOptimizationDialog::PerformanceOptimizationDialog(SystemState* state_
                                                         "comes at the cost of less efficient writing, and may limit data writing rates.\n"
                                                         "When saving large amounts of data, the highest latency is recommended."), this));
     writeLatencyGroupBoxLayout->addLayout(writeLatencySelectionRow);
+
+    minimalLatencyNoteLabel = new QLabel(tr("Note: When Minimal is selected, data is flushed as quickly as possible,\n"
+                                           "minimizing latency at the cost of overhead for every open file. The One\n"
+                                           "File Per Channel format, and sometimes the One File Per Signal Type\n"
+                                           "format, may incur significant delays. If many open data files increase\n"
+                                           "the overhead cost enough to bottleneck data, the HW/SW buffers will\n"
+                                           "eventually begin to fill. When using Minimal, either the Traditional or\n"
+                                           "One File Per Signal Type format is recommended. Otherwise, increase\n"
+                                           "latency to Lowest for safer operation."), this);
+
+    writeLatencyGroupBoxLayout->addWidget(minimalLatencyNoteLabel);
 
     QVBoxLayout *plottingModeGroupBoxLayout = new QVBoxLayout;
     plottingModeGroupBoxLayout->addWidget(new QLabel(tr("For large resolution monitors, the Original method of plotting may be too\n"
@@ -130,6 +142,8 @@ PerformanceOptimizationDialog::PerformanceOptimizationDialog(SystemState* state_
 
     setLayout(mainLayout);
 
+    toggleMinimalLatencyNote();
+
     initialize();
 }
 
@@ -155,4 +169,10 @@ void PerformanceOptimizationDialog::initialize()
         writeLatencyComboBox->setEnabled(false);
         plottingModeComboBox->setEnabled(false);
     }
+}
+
+void PerformanceOptimizationDialog::toggleMinimalLatencyNote()
+{
+    minimalLatencyNoteLabel->setVisible(writeLatencyComboBox->currentText() == "Minimal");
+    QTimer::singleShot(0, this, &PerformanceOptimizationDialog::adjustSize);
 }

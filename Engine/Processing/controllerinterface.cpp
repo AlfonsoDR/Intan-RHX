@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -62,7 +62,7 @@ ControllerInterface::ControllerInterface(SystemState* state_, AbstractRHXControl
     is7310(is7310_)
 {
     connect(state, SIGNAL(stateChanged()), this, SLOT(updateFromState()));
-    openController(boardSerialNumber);
+    openController(boardSerialNumber, state->testMode->getValue());
 
     const int NumSeconds = 10;  // Size of RAM buffer, in seconds.
     int fifoBufferSize = NumSeconds * rhxController->getSampleRate() * BytesPerWord *
@@ -566,7 +566,7 @@ void ControllerInterface::setManualCableDelays()
     }
 }
 
-void ControllerInterface::openController(const QString& boardSerialNumber)
+void ControllerInterface::openController(const QString& boardSerialNumber, bool testMode)
 {
     rhxController->open(boardSerialNumber.toStdString());
 
@@ -575,9 +575,21 @@ void ControllerInterface::openController(const QString& boardSerialNumber)
     if (state->getControllerTypeEnum() == ControllerRecordUSB2) {
         bitfilename = ConfigFileRHDBoard;
     } else if (state->getControllerTypeEnum() == ControllerRecordUSB3) {
-        bitfilename = is7310 ? ConfigFileRHDController_7310 : ConfigFileRHDController;
+        if (is7310) {
+            // Uncomment when unique .bit files for testmode are needed
+            //bitfilename = testMode ? ConfigFileRHDController_7310_test : ConfigFileRHDController_7310;
+            bitfilename = ConfigFileRHDController_7310;
+        } else {
+            bitfilename = ConfigFileRHDController;
+        }
     } else if (state->getControllerTypeEnum() == ControllerStimRecord){
-        bitfilename = is7310 ? ConfigFileRHSController_7310 : ConfigFileRHSController;
+        if (is7310) {
+            // Uncomment when unique .bit files for testmode are needed
+            //bitfilename = testMode ? ConfigFileRHSController_7310_test : ConfigFileRHSController_7310;
+            bitfilename = ConfigFileRHSController_7310;
+        } else {
+            bitfilename = ConfigFileRHSController;
+        }
     } else {
         bitfilename = ConfigFileRHDController_7310;
     }
@@ -2025,6 +2037,11 @@ void ControllerInterface::uploadStimParameters()
         Channel* channel = state->signalSources->channelByName(QString::fromStdString(allChannels[i]));
         uploadStimParameters(channel);
     }
+}
+
+void ControllerInterface::setDigOut(int channel, bool high)
+{
+    rhxController->setDigOut(channel, high);
 }
 
 void ControllerInterface::sendTCPError(QString errorMessage)

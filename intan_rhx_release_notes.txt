@@ -144,3 +144,9 @@ Intan RHX release notes
 - Improve spacing of StimParam widgets so that some fields are no longer visibly obstructed on Windows 11
 - Set default style to Fusion for all platforms to limit future platform-specific widget display issues
 - Upgrade from Qt 6.8.3 to 6.10.1
+
+* Version 3.5.1, 20 May 2026
+- Improve chip testing to be easier to automate
+- Add experimental WriteToDiskLatency option "Minimal" with more frequent flushing than "Lowest" (use with caution)
+- Add command-line startup settings INI file option for default settings file
+- Add option for TCP sockets to remain "Pending" instead of "Disconnected" when client disconnects

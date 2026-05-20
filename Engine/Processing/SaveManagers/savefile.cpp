@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -429,10 +429,13 @@ void SaveFile::flush()
 }
 
 
-// For Windows 10, it appears that there's an internal buffer of 16 KB when writing to files.
-// This is most cumbersome when writing spike.dat files, which can go long periods with minimal data writing.
+// For Windows, it appears that there's an internal buffer of 16 KB when writing to files.
+// This is most cumbersome when writing spike.dat files, which can go long periods with minimal data writing,
+// but does impact all data file types, making real-time access to that data from other applications challenging.
 // Even when flushing, if less than 16 KB of data is to be written, it doesn't appear to actually get written,
 // unless the file is closed. A flush can thus be forced by closing then reopening the file.
+// Especially for One File Per Channel, this can result in a very large number of close/reopen operations
+// occurring every second, potentially bottlenecking data acquisition entirely, so this approach should be used sparingly.
 void SaveFile::forceFlush()
 {
     if (!file) return;

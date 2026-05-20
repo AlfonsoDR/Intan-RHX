@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -30,10 +30,11 @@
 
 #include "tcpcommunicator.h"
 
-TCPCommunicator::TCPCommunicator(QString host_, int port_, ConnectionStatus status_, QObject *parent) :
+TCPCommunicator::TCPCommunicator(QString host_, int port_, ConnectionStatus status_, ConnectionStatus statusOnClientDisconnect_, QObject *parent) :
     QObject(parent),
     passwordCleared(false),
     status(status_),
+    statusOnClientDisconnect(statusOnClientDisconnect_),
     host(host_),
     port(port_),
     server(nullptr),
@@ -53,7 +54,7 @@ void TCPCommunicator::establishConnection()
     if (connectionAvailable()) {
         socket = server->nextPendingConnection();
         connect(socket, SIGNAL(readyRead()), this, SLOT(emitReadyRead()));
-        connect(socket, SIGNAL(disconnected()), this, SLOT(returnToDisconnected()));
+        connect(socket, SIGNAL(disconnected()), this, SLOT(handleDisconnection()));
         server->close();
         status = Connected;
         emit statusChanged();
@@ -112,18 +113,23 @@ void TCPCommunicator::attemptNewConnection()
     }
 }
 
-void TCPCommunicator::returnToDisconnected()
+void TCPCommunicator::handleDisconnection(bool fromClient)
 {
     if (socket) {
         // Before disconnecting, if any data is on the socket, grab it.
         cachedCommands = socket->readAll();
         // Disconnect and destroy socket
         disconnect(socket, SIGNAL(readyRead()), this, SLOT(emitReadyRead()));
-        disconnect(socket, SIGNAL(disconnected()), this, SLOT(returnToDisconnected()));
+        disconnect(socket, SIGNAL(disconnected()), this, SLOT(handleDisconnection()));
         socket = nullptr;
     }
     server->close();
-    status = Disconnected;
+
+    if (fromClient && statusOnClientDisconnect == Pending) {
+        attemptNewConnection();
+    } else {
+        status = Disconnected;
+    }
     emit statusChanged();
 }
 

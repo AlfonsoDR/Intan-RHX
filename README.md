@@ -20,8 +20,10 @@ Various files need to be present in the same directory as the binary executable 
 
 * kernel.cl
 * ConfigRHDController.bit
+* ConfigRHDController\_7310.bit
 * ConfigRHDInterfaceBoard.bit
 * ConfigRHSController.bit
+* ConfigRHSController\_7310.bit
 * ConfigXEM6010Tester.bit
 * USBEvaluationBoard.bit.
 

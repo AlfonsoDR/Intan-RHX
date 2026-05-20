@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -65,6 +65,7 @@ private:
     QPushButton *commandsConnectButton;
     QPushButton *commandsDisconnectButton;
     QLabel *commandsStatus;
+    QCheckBox *commandsRemainPendingCheckBox;
 
     QTextEdit *commandTextEdit;
     QPushButton *clearCommandsButton;
@@ -77,6 +78,9 @@ private:
 
     QPushButton *waveformOutputDisconnectButton;
     QPushButton *spikeOutputDisconnectButton;
+
+    QCheckBox *waveformRemainPendingCheckBox;
+    QCheckBox *spikeRemainPendingCheckBox;
 
     QTableWidget *presentChannelsTable;
 
@@ -111,12 +115,15 @@ private slots:
 
     void commandsHostEdited();
     void commandsPortChanged();
+    void commandsRemainPendingChanged(bool isChecked);
 
     void waveformOutputHostEdited();
     void waveformOutputPortChanged();
+    void waveformOutputRemainPendingChanged(bool isChecked);
 
     void spikeOutputHostEdited();
     void spikeOutputPortChanged();
+    void spikeOutputRemainPendingChanged(bool isChecked);
 
     void clearCommands();
     void clearErrors();

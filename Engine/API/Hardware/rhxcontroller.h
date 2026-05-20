@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -109,6 +109,8 @@ public:
     void selectDacDataChannel(int dacChannel, int dataChannel) override;
     void selectAuxCommandLength(AuxCmdSlot auxCommandSlot, int loopIndex, int endIndex) override;
     void selectAuxCommandBank(BoardPort port, AuxCmdSlot auxCommandSlot, int bank) override; // not used with ControllerStimRecord
+
+    void setDigOut(int channel, bool high) override;
 
     int getBoardMode() override;
     int getNumSPIPorts(bool& expanderBoardDetected) override;

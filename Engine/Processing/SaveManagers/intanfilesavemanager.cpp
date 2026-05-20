@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -182,11 +182,14 @@ int64_t IntanFileSaveManager::writeToSaveFiles(int numSamples, int timeIndex)
 
         timeIndex += samplesPerDataBlock;
     }
+    int64_t numBytes = saveFile->getNumBytesWritten();
+    if (minimalLatency)
+        saveFile->forceFlush();
 
     delete [] vArray;
     delete [] uint16Array;
 
-    return saveFile->getNumBytesWritten();
+    return numBytes;
 }
 
 int IntanFileSaveManager::maxSamplesInFile() const

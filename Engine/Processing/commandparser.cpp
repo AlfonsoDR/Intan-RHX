@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -127,6 +127,8 @@ void CommandParser::setStateTCPCommunicatorItemCommand(StateTCPCommunicatorItem 
         item->setPort(value);
     } else if (hostOrPortOrStatus.toLower() == item->getStatusParameterName().toLower()) {
         item->setStatus(value);
+    } else if (hostOrPortOrStatus.toLower() == item->getStatusOnClientDisconnectParameterName().toLower()) {
+        item->setStatusOnClientDisconnect(value);
     }
 }
 
@@ -138,6 +140,8 @@ void CommandParser::getStateTCPCommunicatorItemCommand(StateTCPCommunicatorItem 
         returnTCP(item->getParameterName() + "." + hostOrPortOrStatus, item->getPort());
     } else if (hostOrPortOrStatus.toLower() == item->getStatusParameterName().toLower()) {
         returnTCP(item->getParameterName() + "." + hostOrPortOrStatus, item->getStatus());
+    } else if (hostOrPortOrStatus.toLower() == item->getStatusOnClientDisconnectParameterName().toLower()) {
+        returnTCP(item->getParameterName() + "." + hostOrPortOrStatus, item->getStatusOnClientDisconnect());
     }
 }
 
@@ -158,7 +162,8 @@ void CommandParser::getCommandSlot(QString parameter)
 
     // Check in Global-level list for tcpcommunicator items
     QString hostOrPortOrStatus;
-    StateTCPCommunicatorItem* tcpCommunicatorItem = state->locateStateTCPCommunicatorItem(state->stateTCPCommunicatorItems, parameterLower, hostOrPortOrStatus); // Can be <tcpsocket>.host, <tcpsocket>.port, or <tcpsocket>.status
+    // Can be <tcpsocket>.host, <tcpsocket>.port, <tcpsocket>.status, or <tcpsocket>.statusonclientdisconnect
+    StateTCPCommunicatorItem* tcpCommunicatorItem = state->locateStateTCPCommunicatorItem(state->stateTCPCommunicatorItems, parameterLower, hostOrPortOrStatus);
     if (tcpCommunicatorItem) {
         std::cout << ">> " << (tcpCommunicatorItem->getParameterName().toLower() + "." + hostOrPortOrStatus).toStdString() << '\n';
         getStateTCPCommunicatorItemCommand(tcpCommunicatorItem, hostOrPortOrStatus);
@@ -232,7 +237,8 @@ void CommandParser::setCommandSlot(QString parameter, QString value)
 
     // Check in Global-level list for tcpcommunicator items
     QString hostOrPortOrStatus;
-    StateTCPCommunicatorItem* tcpCommunicatorItem = state->locateStateTCPCommunicatorItem(state->stateTCPCommunicatorItems, parameterLower, hostOrPortOrStatus); // Can be <tcpsocket>.host, <tcpsocket>.port, or <tcpsocket>.status
+    // Can be <tcpsocket>.host, <tcpsocket>.port, <tcpsocket>.status, or <tcpsocket>.statusonclientdisconnect
+    StateTCPCommunicatorItem* tcpCommunicatorItem = state->locateStateTCPCommunicatorItem(state->stateTCPCommunicatorItems, parameterLower, hostOrPortOrStatus);
     if (tcpCommunicatorItem) {
         if (tcpCommunicatorItem->isRestricted()) {
             emit TCPErrorSignal(tcpCommunicatorItem->getRestrictErrorMessage());

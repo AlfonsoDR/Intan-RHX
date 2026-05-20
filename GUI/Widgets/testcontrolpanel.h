@@ -7,7 +7,8 @@
 struct ChannelInfo {
     int channelVectorIndex;
     int actualChannelNumber;
-    double triangleError;
+    double rmsError;
+    double absoluteError;
     double variableError;
     double posAvg;
     double negAvg;
@@ -105,6 +106,8 @@ private slots:
     void checkInputWaveHelp();
     void testChipHelp();
     void uploadTestStimParametersHelp();
+    void setDigitalOut1Slot(bool high);
+    void setDigitalOut2Slot(bool high);
     void toggleTestAuxInsSlot();
     void changePortComboBoxSlot();
 
@@ -115,7 +118,7 @@ private:
 
     void updateYScales() override final;
 
-    void generateReport(QVector<QVector<double>> channels);
+    bool generateReport(QVector<QVector<double>> channels);
 
     QVector<QVector<double>> channels;
     QVector<QVector<QVector<double>>> dcData;
@@ -137,7 +140,8 @@ private:
 
     QPushButton *testChipButton;
 
-    QLineEdit *triangleErrorThresholdLineEdit;
+    QLineEdit *rmsErrorThresholdLineEdit;
+    QLineEdit *absErrorThresholdLineEdit;
     QLineEdit *settleErrorThresholdLineEdit;
     QLineEdit *stimExpectedVoltageLineEdit;
 
@@ -148,7 +152,9 @@ private:
     QPushButton *saveReportButton;
     bool reportPresent;
 
-    QCheckBox* testAuxInsCheckBox;
+    QCheckBox *digOut1CheckBox;
+    QCheckBox *digOut2CheckBox;
+    QCheckBox *testAuxInsCheckBox;
 
     QLabel *connectedChannelsLabel;
     ConnectedChannels connectedChannels;
@@ -157,6 +163,7 @@ private:
     //QPushButton *clearStimButton;
 
     QVector<double> channels_report;
+    QVector<double> channels_report_abs;
     QVector<double> channels_report_settle;
     QVector<double> channels_report_stim;
     QVector<double> channels_report_pos;
@@ -194,10 +201,11 @@ private:
     double estimateFrequency(double A, const QVector<double> &t, const QVector<double> &waveform);
     double estimatePhase(double f, const QVector<double> &t, const QVector<double> &waveform);
     double rmsError(const QVector<double> &t, const QVector<double> &ytarget, double f, double A, double phase);
+    double absError(const QVector<double> &t, const QVector<double> &ytarget, double f, double A, double phase);
     double median(const QVector<double> &arr);
     void addMatrix(const QVector<double> &augend, const QVector<double> &addend, QVector<double> &sum);
     double mean(const QVector<double> &arr);
-    void triangle(QVector<double> &y, QVector<double> &t, double f, double A, double phase);
+    void triangle(QVector<double> &y, const QVector<double> &t, double f, double A, double phase);
     void baseTriangle(QVector<double> &t, QVector<double> &y);
     void eliminateAverageOffset(QVector<QVector<double> > &channels);
     void eliminateAverageOffset(QVector<double> &channel);

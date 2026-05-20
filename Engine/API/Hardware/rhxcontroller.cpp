@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -1541,6 +1541,17 @@ void RHXController::selectAuxCommandBank(BoardPort port, AuxCmdSlot auxCommandSl
     dev->UpdateWireIns();
 }
 
+// Intended for chip testing only; manually set digital outs 1 or 2 to high or low
+void RHXController::setDigOut(int channel, bool high)
+{
+    if (channel == 0) {
+        dev->SetWireInValue(WireInDacSource1, high << 12, 1 << 12);
+    } else if (channel == 1) {
+        dev->SetWireInValue(WireInDacSource1, high << 13, 1 << 13);
+    }
+    dev->UpdateWireIns();
+}
+
 // Return 4-bit "board mode" input.
 int RHXController::getBoardMode()
 {
@@ -1902,6 +1913,16 @@ int RHXController::findConnectedChips(std::vector<ChipType> &chipType, std::vect
         if (lastDetectedChip == RHD2164Chip && lastDetectedNumStreams == 4) {
             optimumDelay[convertedPortIndex + 1] = previousDelay;
             chipTypeOld[convertedPortIndex + 1] = (ChipType) lastDetectedChip;
+        }
+
+        // Still need a brief run to allow ADC calibration to complete, since skipping this step
+        // will result in an uncalibrated chip.
+        run();
+        while (isRunning()) {
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
+        }
+        for (int i = 0; i < NRepeats; ++i) {
+            readDataBlock(&dataBlock);
         }
     }
 

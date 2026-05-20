@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -83,6 +83,15 @@ TCPDisplay::TCPDisplay(SystemState* state_, QWidget *parent) :
 
     spikeOutputConnectButton = new QPushButton(tr("Connect"));
     connect(spikeOutputConnectButton, SIGNAL(clicked(bool)), this, SLOT(spikeOutputConnect()));
+
+    commandsRemainPendingCheckBox = new QCheckBox(tr("Remain Pending When Client Disconnects"), this);
+    connect(commandsRemainPendingCheckBox, SIGNAL(toggled(bool)), this, SLOT(commandsRemainPendingChanged(bool)));
+
+    waveformRemainPendingCheckBox = new QCheckBox(tr("Remain Pending When Client Disconnects"), this);
+    connect(waveformRemainPendingCheckBox, SIGNAL(toggled(bool)), this, SLOT(waveformOutputRemainPendingChanged(bool)));
+
+    spikeRemainPendingCheckBox = new QCheckBox(tr("Remain Pending When Client Disconnects"), this);
+    connect(spikeRemainPendingCheckBox, SIGNAL(toggled(bool)), this, SLOT(spikeOutputRemainPendingChanged(bool)));
 
     presentChannelsTable = new QTableWidget(1, 1, this);
     presentChannelsTable->horizontalHeader()->setStretchLastSection(true);
@@ -169,8 +178,16 @@ TCPDisplay::TCPDisplay(SystemState* state_, QWidget *parent) :
     waveformOutputAddressRow->addWidget(waveformOutputConnectButton);
     waveformOutputAddressRow->addWidget(waveformOutputDisconnectButton);
 
+    QHBoxLayout *waveformRemainPendingRow = new QHBoxLayout;
+    waveformRemainPendingRow->addWidget(waveformRemainPendingCheckBox);
+    waveformRemainPendingRow->addStretch();
+
+    QVBoxLayout *waveformOutputLayout = new QVBoxLayout;
+    waveformOutputLayout->addLayout(waveformOutputAddressRow);
+    waveformOutputLayout->addLayout(waveformRemainPendingRow);
+
     QGroupBox *waveformOutputGroupBox = new QGroupBox(tr("Waveform Output"), this);
-    waveformOutputGroupBox->setLayout(waveformOutputAddressRow);
+    waveformOutputGroupBox->setLayout(waveformOutputLayout);
 
     QHBoxLayout *spikeOutputAddressRow = new QHBoxLayout;
     spikeOutputAddressRow->addWidget(new QLabel(tr("Host"), this));
@@ -180,8 +197,16 @@ TCPDisplay::TCPDisplay(SystemState* state_, QWidget *parent) :
     spikeOutputAddressRow->addWidget(spikeOutputConnectButton);
     spikeOutputAddressRow->addWidget(spikeOutputDisconnectButton);
 
+    QHBoxLayout *spikeRemainPendingRow = new QHBoxLayout;
+    spikeRemainPendingRow->addWidget(spikeRemainPendingCheckBox);
+    spikeRemainPendingRow->addStretch();
+
+    QVBoxLayout *spikeOutputLayout = new QVBoxLayout;
+    spikeOutputLayout->addLayout(spikeOutputAddressRow);
+    spikeOutputLayout->addLayout(spikeRemainPendingRow);
+
     QGroupBox *spikeOutputGroupBox = new QGroupBox(tr("Spike Output"), this);
-    spikeOutputGroupBox->setLayout(spikeOutputAddressRow);
+    spikeOutputGroupBox->setLayout(spikeOutputLayout);
 
     QHBoxLayout *commandsStatusRow = new QHBoxLayout;
     commandsStatusRow->addWidget(commandsConnectButton);
@@ -189,6 +214,7 @@ TCPDisplay::TCPDisplay(SystemState* state_, QWidget *parent) :
     commandsStatusRow->addWidget(new QLabel(tr("Status:"), this));
     commandsStatusRow->addWidget(commandsStatus);
     commandsStatusRow->addStretch();
+    commandsStatusRow->addWidget(commandsRemainPendingCheckBox);
 
     QHBoxLayout *dataOutputStatusRow1 = new QHBoxLayout;
     dataOutputStatusRow1->addWidget(new QLabel(tr("Status:"), this));
@@ -293,10 +319,13 @@ void TCPDisplay::updateFromState()
 {
     commandsHostLineEdit->setText(state->tcpCommandCommunicator->communicator->host);
     commandsPortSpinBox->setValue(state->tcpCommandCommunicator->communicator->port);
+    commandsRemainPendingCheckBox->setChecked(state->tcpCommandCommunicator->communicator->statusOnClientDisconnect == Pending);
     waveformOutputHostLineEdit->setText(state->tcpWaveformDataCommunicator->communicator->host);
     waveformOutputPortSpinBox->setValue(state->tcpWaveformDataCommunicator->communicator->port);
+    waveformRemainPendingCheckBox->setChecked(state->tcpWaveformDataCommunicator->communicator->statusOnClientDisconnect == Pending);
     spikeOutputHostLineEdit->setText(state->tcpSpikeDataCommunicator->communicator->host);
     spikeOutputPortSpinBox->setValue(state->tcpSpikeDataCommunicator->communicator->port);
+    spikeRemainPendingCheckBox->setChecked(state->tcpSpikeDataCommunicator->communicator->statusOnClientDisconnect == Pending);
     updateCommandWidgets();
     updateDataOutputWidgets();
 }
@@ -342,17 +371,17 @@ void TCPDisplay::spikeOutputConnect()
 
 void TCPDisplay::commandsDisconnect()
 {
-    state->tcpCommandCommunicator->communicator->returnToDisconnected();
+    state->tcpCommandCommunicator->communicator->handleDisconnection(false);
 }
 
 void TCPDisplay::waveformOutputDisconnect()
 {
-    state->tcpWaveformDataCommunicator->communicator->returnToDisconnected();
+    state->tcpWaveformDataCommunicator->communicator->handleDisconnection(false);
 }
 
 void TCPDisplay::spikeOutputDisconnect()
 {
-    state->tcpSpikeDataCommunicator->communicator->returnToDisconnected();
+    state->tcpSpikeDataCommunicator->communicator->handleDisconnection(false);
 }
 
 void TCPDisplay::readClientCommand()
@@ -454,6 +483,21 @@ void TCPDisplay::waveformOutputPortChanged()
 void TCPDisplay::spikeOutputPortChanged()
 {
     state->tcpSpikeDataCommunicator->communicator->port = spikeOutputPortSpinBox->value();
+}
+
+void TCPDisplay::commandsRemainPendingChanged(bool isChecked)
+{
+    state->tcpCommandCommunicator->setStatusOnClientDisconnect(isChecked ? "Pending" : "Disconnected");
+}
+
+void TCPDisplay::waveformOutputRemainPendingChanged(bool isChecked)
+{
+    state->tcpWaveformDataCommunicator->setStatusOnClientDisconnect(isChecked ? "Pending" : "Disconnected");
+}
+
+void TCPDisplay::spikeOutputRemainPendingChanged(bool isChecked)
+{
+    state->tcpSpikeDataCommunicator->setStatusOnClientDisconnect(isChecked ? "Pending" : "Disconnected");
 }
 
 void TCPDisplay::clearCommands()

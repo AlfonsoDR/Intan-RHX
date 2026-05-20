@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -328,7 +328,7 @@ void PSTHDialog::saveData()
 
 void PSTHDialog::updateTitle()
 {
-    setWindowTitle(tr("Per-Stimulus Time Histogram") + " (" + state->psthChannel->getValue() + ")");
+    setWindowTitle(tr("Peri-Stimulus Time Histogram") + " (" + state->psthChannel->getValue() + ")");
 }
 
 

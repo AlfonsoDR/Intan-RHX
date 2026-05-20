@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 //
 //  Intan Technologies RHX Data Acquisition Software
-//  Version 3.5.0
+//  Version 3.5.1
 //
 //  Copyright (c) 2020-2026 Intan Technologies
 //
@@ -155,6 +155,7 @@ SystemState::SystemState(const AbstractRHXController* controller_, StimStepSize 
     writeToDiskLatency->addItem("Medium", "Medium", 16.0);
     writeToDiskLatency->addItem("Low", "Low", 64.0);
     writeToDiskLatency->addItem("Lowest", "Lowest", 256.0);
+    writeToDiskLatency->addItem("Minimal", "Minimal", 256.0);
     writeToDiskLatency->setValue("Highest");
 
     createNewDirectory = new BooleanItem("CreateNewDirectory", globalItems, this, true);
@@ -326,10 +327,10 @@ SystemState::SystemState(const AbstractRHXController* controller_, StimStepSize 
 
     actualDspCutoffFreq = new DoubleRangeItem("ActualDSPCutoffFreqHertz", globalItems, this, 0.0, 8000.0, 1.0, XMLGroupReadOnly);
 
-    dspEnabled = new BooleanItem("DSPEnabled", globalItems, this, true);
+    dspEnabled = new BooleanItem("DSPEnabled", globalItems, this, !testMode_);
     dspEnabled->setRestricted(RestrictIfRunning, RunningErrorMessage);
 
-    desiredLowerBandwidth = new DoubleRangeItem("DesiredLowerBandwidthHertz", globalItems, this, 0.1, 500.0, 0.1);
+    desiredLowerBandwidth = new DoubleRangeItem("DesiredLowerBandwidthHertz", globalItems, this, 0.1, 500.0, testMode_ ? 10.0 : 0.1);
     desiredLowerBandwidth->setRestricted(RestrictIfRunning, RunningErrorMessage);
 
     actualLowerBandwidth = new DoubleRangeItem("ActualLowerBandwidthHertz", globalItems, this, 0.05, 1000.0, 0.1, XMLGroupReadOnly);
@@ -927,7 +928,8 @@ StateTCPCommunicatorItem* SystemState::locateStateTCPCommunicatorItem(TCPCommuni
     // Return hostOrPortOrStatus by reference (returning nullptr if hostOrPortOrStatus isn't host, port, or status)
     if ((hostOrPortOrStatus.toLower() != p->second->getHostParameterName().toLower()) &&
         (hostOrPortOrStatus.toLower() != p->second->getPortParameterName().toLower()) &&
-        (hostOrPortOrStatus.toLower() != p->second->getStatusParameterName().toLower())) {
+        (hostOrPortOrStatus.toLower() != p->second->getStatusParameterName().toLower()) &&
+        (hostOrPortOrStatus.toLower() != p->second->getStatusOnClientDisconnectParameterName().toLower())) {
         return nullptr;
     } else {
         hostOrPortOrStatus_ = hostOrPortOrStatus;
@@ -1045,6 +1047,7 @@ QStringList SystemState::getAttributes(XMLGroup xmlGroup) const
     QString thisHost;
     QString thisPort;
     QString thisStatus;
+    QString thisStatusOnClientDisconnect;
     for (TCPCommunicatorItemList::const_iterator p = stateTCPCommunicatorItems.begin(); p != stateTCPCommunicatorItems.end(); ++p) {
         if (p->second->getXMLGroup() == xmlGroup) {
             bool addAttribute = false;
@@ -1071,6 +1074,8 @@ QStringList SystemState::getAttributes(XMLGroup xmlGroup) const
                 attributeList.append(thisPort);
                 thisStatus = p->second->getParameterName() + "." + p->second->getStatusParameterName() + ":_:" + p->second->getStatus();
                 attributeList.append(thisStatus);
+                thisStatusOnClientDisconnect = p->second->getParameterName() + "." + p->second->getStatusOnClientDisconnectParameterName() + ":_:" + p->second->getStatusOnClientDisconnect();
+                attributeList.append(thisStatusOnClientDisconnect);
             }
         }
     }
